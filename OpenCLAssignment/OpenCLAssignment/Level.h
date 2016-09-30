@@ -1,5 +1,5 @@
 #pragma once
-
+#include "PathfinderUtils.h"
 #include <string>
 
 using std::string;
@@ -13,7 +13,7 @@ public:
 	bool initialize(string filename);
 	void draw();
 
-	bool** getRawArray();
+	node** getRawArray();
 	int getWidth();
 	int getHeight();
 	
@@ -22,15 +22,21 @@ public:
 	int getGoalX();
 	int getGoalY();
 
+	node* getGoalNode();
+	node* getStartNode();
+
+	void setConnections();
+
 private:
 	static const int MAX_SIZE = 100;
 	static const char BLOCK_CHAR = 'X';
 	static const char GOAL_CHAR = 'G';
 	static const char START_CHAR = 'S';
 
-	bool** levelArray;
+	node** levelArray;
 	int width;
 	int height;
 
+	std::deque<node*> finalPath;
 	int startX, startY, goalX, goalY;
 };
