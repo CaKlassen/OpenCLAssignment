@@ -16,7 +16,7 @@ std::deque<node*> PathfinderUtils::Astar(node* goal, node* start)
 		currentNode = open[0];
 		currentIT = open.begin();
 		//search for smallest F
-		for (std::deque<node*>::iterator it = open.begin(); it < open.end(); ++it)
+		for (std::deque<node*>::iterator it = open.begin(); it != open.end(); ++it)
 		{
 			if ((*it)->F < currentNode->F)
 			{

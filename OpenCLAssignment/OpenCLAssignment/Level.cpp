@@ -16,11 +16,6 @@ Level::Level()
 
 	for (int i = 0; i < MAX_SIZE; i++)
 		levelArray[i] = new node[MAX_SIZE];
-
-	// Initialize the array to default values
-	//for (int i = 0; i < MAX_SIZE; i++)
-	//	for (int j = 0; j < MAX_SIZE; j++)
-	//		levelArray[i][j] = false;
 }
 
 Level::~Level()
@@ -51,8 +46,8 @@ bool Level::initialize(string filename)
 		{
 			if (line[i] == BLOCK_CHAR)
 			{
-				levelArray[height][i].IDx = height;
-				levelArray[height][i].IDy = i;
+				levelArray[height][i].IDx = i;
+				levelArray[height][i].IDy = height;
 				levelArray[height][i].status = STATUS::UNVISITED;
 				levelArray[height][i].type = NODE_TYPE::WALL;
 				levelArray[height][i].F = 0;
@@ -60,8 +55,8 @@ bool Level::initialize(string filename)
 			}
 			else if (line[i] == GOAL_CHAR)
 			{
-				levelArray[height][i].IDx = height;
-				levelArray[height][i].IDy = i;
+				levelArray[height][i].IDx = i;
+				levelArray[height][i].IDy = height;
 				levelArray[height][i].status = STATUS::UNVISITED;
 				levelArray[height][i].type = NODE_TYPE::GOAL;
 				levelArray[height][i].F = 0;
@@ -71,8 +66,8 @@ bool Level::initialize(string filename)
 			}
 			else if (line[i] == START_CHAR)
 			{
-				levelArray[height][i].IDx = height;
-				levelArray[height][i].IDy = i;
+				levelArray[height][i].IDx = i;
+				levelArray[height][i].IDy = height;
 				levelArray[height][i].status = STATUS::UNVISITED;
 				levelArray[height][i].type = NODE_TYPE::START;
 				levelArray[height][i].F = 0;
@@ -82,13 +77,14 @@ bool Level::initialize(string filename)
 			}
 			else
 			{
-				levelArray[height][i].IDx = height;
-				levelArray[height][i].IDy = i;
+				levelArray[height][i].IDx = i;
+				levelArray[height][i].IDy = height;
 				levelArray[height][i].status = STATUS::UNVISITED;
 				levelArray[height][i].type = NODE_TYPE::SPACE;
 				levelArray[height][i].F = 0;
 				levelArray[height][i].G = 0;
 			}
+
 			lineWidth++;
 		}
 
@@ -109,6 +105,9 @@ bool Level::initialize(string filename)
 
 void Level::draw()
 {
+	bool hasPath = finalPath.size() != 0;
+
+
 	for (int i = 0; i < height; i++)
 	{
 		for (int j = 0; j < width; j++)
@@ -116,7 +115,10 @@ void Level::draw()
 			switch (levelArray[i][j].type)
 			{
 			case NODE_TYPE::SPACE:
-			cout << ' ';
+				if (hasPath && pathAtPosition(j, i))
+					cout << '.';
+				else
+					cout << ' ';
 				break;
 			case NODE_TYPE::WALL:
 				cout << 'X';
@@ -132,6 +134,17 @@ void Level::draw()
 
 		cout << endl;
 	}
+}
+
+bool Level::pathAtPosition(int x, int y)
+{
+	for (deque<node*>::iterator it = finalPath.begin(); it != finalPath.end(); it++)
+	{
+		if ((*it)->IDx == x && (*it)->IDy == y)
+			return true;
+	}
+
+	return false;
 }
 
 void Level::setConnections()

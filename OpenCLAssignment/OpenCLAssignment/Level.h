@@ -3,7 +3,7 @@
 #include <string>
 
 using std::string;
-
+using std::deque;
 
 class Level
 {
@@ -32,6 +32,8 @@ private:
 	static const char BLOCK_CHAR = 'X';
 	static const char GOAL_CHAR = 'G';
 	static const char START_CHAR = 'S';
+
+	bool pathAtPosition(int x, int y);
 
 	node** levelArray;
 	int width;
