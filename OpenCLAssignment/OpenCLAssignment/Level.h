@@ -17,8 +17,10 @@ public:
 	int getWidth();
 	int getHeight();
 	
-	void getStart(int *x, int *y);
-	void getGoal(int *x, int *y);
+	int getStartX();
+	int getStartY();
+	int getGoalX();
+	int getGoalY();
 
 private:
 	static const int MAX_SIZE = 100;

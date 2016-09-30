@@ -19,14 +19,6 @@ int main(void)
 	level.draw();
 
 	// TODO: Find a path from the start to the goal
-	bool** rawArray = level.getRawArray();
-	int *sX = new int;
-	int *sY = new int;
-	int *gX = new int;
-	int *gY = new int;
-
-	level.getStart(sX, sY);
-	level.getGoal(gX, gY);
 
 
 	// Wait for input

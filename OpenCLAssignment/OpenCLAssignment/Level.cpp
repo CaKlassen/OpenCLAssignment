@@ -108,14 +108,22 @@ bool** Level::getRawArray()
 	return levelArray;
 }
 
-void Level::getStart(int *x, int *y)
+int Level::getStartX()
 {
-	*x = startX;
-	*y = startY;
+	return startX;
 }
 
-void Level::getGoal(int *x, int *y)
+int Level::getStartY()
 {
-	*x = goalX;
-	*y = goalY;
+	return startY;
+}
+
+int Level::getGoalX()
+{
+	return goalX;
+}
+
+int Level::getGoalY()
+{
+	return goalY;
 }
