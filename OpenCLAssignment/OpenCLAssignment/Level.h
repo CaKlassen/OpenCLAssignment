@@ -10,7 +10,7 @@ class Level
 public:
 	Level();
 	~Level();
-	bool initialize(string filename);
+	bool initialize(string filename, bool parallel);
 	void draw();
 
 	node** getRawArray();

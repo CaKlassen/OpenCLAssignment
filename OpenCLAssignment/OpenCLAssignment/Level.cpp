@@ -27,7 +27,7 @@ Level::~Level()
 	delete[] levelArray;
 }
 
-bool Level::initialize(string filename)
+bool Level::initialize(string filename, bool parallel)
 {
 	// Open the level file
 	ifstream file;
@@ -36,8 +36,6 @@ bool Level::initialize(string filename)
 	if (!file.is_open())
 		return false;
 
-	// Create the OpenCL wrapper
-	CLsetUp cl("LevelLoader.cl", "loadLevel");
 
 	// Read the file into a string
 	string contents((std::istreambuf_iterator<char>(file)),
@@ -45,87 +43,107 @@ bool Level::initialize(string filename)
 	char* rawContents = (char*)contents.c_str();
 	int length = strlen(rawContents);
 
-	int* levelTiles = new int[length];
-
-	// Set up memory objects in OpenCL
-	cl.AddMemObject(clCreateBuffer(cl.getVars().context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, sizeof(char) * length, rawContents, NULL));
-	cl.AddMemObject(clCreateBuffer(cl.getVars().context, CL_MEM_READ_WRITE, sizeof(int) * length, NULL, NULL));
-
-	cl.SetKernelArgs();
-
-	// Execute the level loader kernel
-	size_t globalWorkSize[] = { length };
-	size_t localWorkSize[] = { 1 };
-
-	cl.QueueKernel(globalWorkSize, localWorkSize);
-
-	// Retrieve the output
-	cl.getOutput(sizeof(int) * length, levelTiles);
+	NODE_TYPE* levelTiles = new NODE_TYPE[length];
 
 
-	cout << "\nPrinting output:\n\n";
-	for (int i = 0; i < length; i++)
-		cout << levelTiles[i] << " ";
+	if (parallel)
+	{
+		// Create the OpenCL wrapper
+		CLsetUp cl("LevelLoader.cl", "loadLevel");
 
-	/*
-	// Load the file into the array
-	string line;
+		// Set up memory objects in OpenCL
+		cl.AddMemObject(clCreateBuffer(cl.getVars().context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, sizeof(char) * length, rawContents, NULL));
+		cl.AddMemObject(clCreateBuffer(cl.getVars().context, CL_MEM_READ_WRITE, sizeof(NODE_TYPE) * length, NULL, NULL));
+
+		cl.SetKernelArgs();
+
+		// Execute the level loader kernel
+		size_t globalWorkSize[] = { length };
+		size_t localWorkSize[] = { 1 };
+
+		cl.QueueKernel(globalWorkSize, localWorkSize);
+
+		// Retrieve the output
+		cl.getOutput(sizeof(NODE_TYPE) * length, levelTiles);
+
+		// Add a printing buffer for cleanliness
+		cout << endl << endl;
+	}
+	else
+	{
+		for (int i = 0; i < length; i++)
+		{
+			if (rawContents[i] == 'X') // X
+				levelTiles[i] = WALL;
+			else if (rawContents[i] == ' ') // Space
+				levelTiles[i] = SPACE;
+			else if (rawContents[i] == 'G') // G
+				levelTiles[i] = GOAL;
+			else if (rawContents[i] == 'S') // S
+				levelTiles[i] = START;
+			else // \n
+				levelTiles[i] = NEW_LINE;
+		}
+	}
+
+	// Create the level proper
 	int lineWidth = 0;
 	int maxWidth = 0;
 
-	while (getline(file, line))
+	for (int i = 0; i < length; i++)
 	{
-		for (int i = 0; i < line.length(); i++)
+		if (levelTiles[i] == WALL)
 		{
-			if (line[i] == BLOCK_CHAR)
-			{
-				levelArray[height][i].IDx = i;
-				levelArray[height][i].IDy = height;
-				levelArray[height][i].status = STATUS::UNVISITED;
-				levelArray[height][i].type = NODE_TYPE::WALL;
-				levelArray[height][i].F = 0;
-				levelArray[height][i].G = 0;
-			}
-			else if (line[i] == GOAL_CHAR)
-			{
-				levelArray[height][i].IDx = i;
-				levelArray[height][i].IDy = height;
-				levelArray[height][i].status = STATUS::UNVISITED;
-				levelArray[height][i].type = NODE_TYPE::GOAL;
-				levelArray[height][i].F = 0;
-				levelArray[height][i].G = 0;
-				goalX = height;
-				goalY = i;
-			}
-			else if (line[i] == START_CHAR)
-			{
-				levelArray[height][i].IDx = i;
-				levelArray[height][i].IDy = height;
-				levelArray[height][i].status = STATUS::UNVISITED;
-				levelArray[height][i].type = NODE_TYPE::START;
-				levelArray[height][i].F = 0;
-				levelArray[height][i].G = 0;
-				startX = height;
-				startY = i;
-			}
-			else
-			{
-				levelArray[height][i].IDx = i;
-				levelArray[height][i].IDy = height;
-				levelArray[height][i].status = STATUS::UNVISITED;
-				levelArray[height][i].type = NODE_TYPE::SPACE;
-				levelArray[height][i].F = 0;
-				levelArray[height][i].G = 0;
-			}
+			levelArray[height][lineWidth].IDx = lineWidth;
+			levelArray[height][lineWidth].IDy = height;
+			levelArray[height][lineWidth].status = STATUS::UNVISITED;
+			levelArray[height][lineWidth].type = NODE_TYPE::WALL;
+			levelArray[height][lineWidth].F = 0;
+			levelArray[height][lineWidth].G = 0;
+		}
+		else if (levelTiles[i] == GOAL)
+		{
+			levelArray[height][lineWidth].IDx = lineWidth;
+			levelArray[height][lineWidth].IDy = height;
+			levelArray[height][lineWidth].status = STATUS::UNVISITED;
+			levelArray[height][lineWidth].type = NODE_TYPE::GOAL;
+			levelArray[height][lineWidth].F = 0;
+			levelArray[height][lineWidth].G = 0;
+			goalX = height;
+			goalY = lineWidth;
+		}
+		else if (levelTiles[i] == START)
+		{
+			levelArray[height][lineWidth].IDx = lineWidth;
+			levelArray[height][lineWidth].IDy = height;
+			levelArray[height][lineWidth].status = STATUS::UNVISITED;
+			levelArray[height][lineWidth].type = NODE_TYPE::START;
+			levelArray[height][lineWidth].F = 0;
+			levelArray[height][lineWidth].G = 0;
+			startX = height;
+			startY = lineWidth;
+		}
+		else if (levelTiles[i] == SPACE)
+		{
+			levelArray[height][lineWidth].IDx = lineWidth;
+			levelArray[height][lineWidth].IDy = height;
+			levelArray[height][lineWidth].status = STATUS::UNVISITED;
+			levelArray[height][lineWidth].type = NODE_TYPE::SPACE;
+			levelArray[height][lineWidth].F = 0;
+			levelArray[height][lineWidth].G = 0;
+		}
+		else
+		{
+			// New line
+			if (lineWidth > maxWidth)
+				maxWidth = lineWidth;
 
-			lineWidth++;
+			height++;
+			lineWidth = 0;
 		}
 
-		if (lineWidth > maxWidth)
-			maxWidth = lineWidth;
-
-		height++;
-		lineWidth = 0;
+		if (levelTiles[i] != NEW_LINE)
+			lineWidth++;
 	}
 
 	width = maxWidth;
@@ -134,13 +152,13 @@ bool Level::initialize(string filename)
 	finalPath = PathfinderUtils::Astar(getGoalNode(), getStartNode());
 
 	return true;
-	*/
 }
 
 void Level::draw()
 {
-	bool hasPath = finalPath.size() != 0;
+	cout << "Drawing level..." << endl << endl;
 
+	bool hasPath = finalPath.size() != 0;
 
 	for (int i = 0; i < height; i++)
 	{
