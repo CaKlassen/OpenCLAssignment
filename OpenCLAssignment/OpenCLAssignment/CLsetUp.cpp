@@ -6,7 +6,7 @@ CLsetUp::CLsetUp(char* KernelfileName, char* kernelName)
 	this->fileName = KernelfileName;
 	this->kernelName = kernelName;
 
-	if (CheckError(CreateContext()))
+	if (!CheckError(CreateContext()))
 	{
 		std::cerr << "failed to create context\nexiting" << std::endl;
 		getchar();
@@ -14,7 +14,7 @@ CLsetUp::CLsetUp(char* KernelfileName, char* kernelName)
 	}
 	
 	
-	if (CheckError(CreateCommandQueue()))
+	if (!CheckError(CreateCommandQueue()))
 	{
 		std::cerr << "failed to create command queue\nexiting" << std::endl;
 		getchar();
@@ -22,14 +22,14 @@ CLsetUp::CLsetUp(char* KernelfileName, char* kernelName)
 	}
 	
 	
-	if(CheckError(CreateProgram()))
+	if(!CheckError(CreateProgram()))
 	{
 		std::cerr << "failed to create program\nexiting" << std::endl;
 		getchar();
 		exit(1);
 	}
 	
-	if(CheckError(CreateKernel()))
+	if(!CheckError(CreateKernel()))
 	{
 		std::cerr << "failed to create kernel\nexiting" << std::endl;
 		getchar();
@@ -55,11 +55,11 @@ bool CLsetUp::CreateContext()
 	cl_uint numPlatforms;
 	cl_int errNum = clGetPlatformIDs(1, &firstPlatformId, &numPlatforms);
 	if (!CheckError(errNum))
-		return false;
+		return 1;
 	if (numPlatforms <= 0)
 	{
 		std::cerr << "Failed to find any OpenCL platforms." << std::endl;
-		return false;
+		return 1;
 	}
 	std::cout << std::endl << numPlatforms << " platforms in total" << std::endl;
 
@@ -70,7 +70,7 @@ bool CLsetUp::CreateContext()
 	errNum = clGetPlatformInfo(firstPlatformId, CL_PLATFORM_NAME, sizeof(pname), (void *)pname, &retsize);
 
 	if (!CheckError(errNum))
-		return false;
+		return 1;
 
 	std::cout << std::endl << "Selected platform <" << pname << ">" << std::endl;
 
@@ -87,9 +87,9 @@ bool CLsetUp::CreateContext()
 	
 	
 	if (!CheckError(errNum))
-		return false;
+		return 1;
 
-	return true;
+	return 0;
 }
 
 //  Create a command queue on the first device available on the context
@@ -129,7 +129,7 @@ bool CLsetUp::CreateCommandQueue()
 			break;
 		}
 		std::cerr << " size = " << numDevices * sizeof(cl_device_id) << ";" << retSize << std::endl;
-		return false;
+		return 1;
 	}
 
 
@@ -146,7 +146,7 @@ bool CLsetUp::CreateCommandQueue()
 		if (!CheckError(errNum))
 		{
 			free(deviceList);
-			return false;
+			return 1;
 		}
 		std::cout << " type " << devType << ":";
 		if (devType & CL_DEVICE_TYPE_CPU)
@@ -164,7 +164,7 @@ bool CLsetUp::CreateCommandQueue()
 		if (!CheckError(errNum))
 		{
 			free(deviceList);
-			return false;
+			return 1;
 		}
 		//std::cout << " name=<" << devName << ">" << std::endl;
 
@@ -180,14 +180,14 @@ bool CLsetUp::CreateCommandQueue()
 	{
 		free(deviceList);
 		std::cerr << "Failed to create commandQueue for device 0";
-		return false;
+		return 1;
 	}
 
 	CLvars.device = deviceList[0];
 
 	free(deviceList);
 
-	return true;
+	return 0;
 }
 
 //  Create an OpenCL program from the kernel source file
@@ -199,7 +199,7 @@ bool CLsetUp::CreateProgram()
 	if (!kernelFile.is_open())
 	{
 		std::cerr << "Failed to open file for reading: " << fileName << std::endl;
-		return NULL;
+		return 1;
 	}
 
 	std::ostringstream oss;
@@ -214,7 +214,7 @@ bool CLsetUp::CreateProgram()
 	if (CLvars.program == NULL)
 	{
 		std::cerr << "Failed to create CL program from source." << std::endl;
-		return false;
+		return 1;
 	}
 
 	errNum = clBuildProgram(CLvars.program, 0, NULL, NULL, NULL, NULL);
@@ -228,10 +228,10 @@ bool CLsetUp::CreateProgram()
 		std::cerr << "Error in kernel: " << std::endl;
 		std::cerr << buildLog;
 		clReleaseProgram(CLvars.program);
-		return false;
+		return 1;
 	}
 
-	return true;
+	return 0;
 }
 
 //create the kernel
@@ -241,10 +241,10 @@ bool CLsetUp::CreateKernel()
 	if (CLvars.kernel == NULL)
 	{
 		std::cerr << "Failed to create kernel" << std::endl;
-		return false;
+		return 1;
 	}
 
-	return true;
+	return 0;
 }
 
 
@@ -252,7 +252,7 @@ bool CLsetUp::CreateKernel()
 bool CLsetUp::AddMemObject(cl_mem buff)
 {
 	CLvars.memObjects.push_back(buff);
-	return true;
+	return 0;
 }
 
 //set the kernel arguments
@@ -267,11 +267,11 @@ bool CLsetUp::SetKernelArgs()
 		if (!CheckError(error))
 		{
 			std::cerr << "Failed to set kernel arguments" << std::endl;
-			return false;
+			return 1;
 		}
 	}
 
-	return true;
+	return 0;
 }
 
 //run the kernel
