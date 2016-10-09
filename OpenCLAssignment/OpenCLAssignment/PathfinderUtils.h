@@ -2,7 +2,7 @@
 #include <vector>
 #include <deque>
 enum STATUS{OPEN, CLOSED, UNVISITED};
-enum NODE_TYPE{WALL, SPACE, GOAL, START};
+enum NODE_TYPE{WALL, SPACE, GOAL, START, NEW_LINE};
 
 struct node
 {

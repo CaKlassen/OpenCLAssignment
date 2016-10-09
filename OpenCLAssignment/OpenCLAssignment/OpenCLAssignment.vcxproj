@@ -139,6 +139,9 @@
     <ClInclude Include="Level.h" />
     <ClInclude Include="PathfinderUtils.h" />
   </ItemGroup>
+  <ItemGroup>
+    <None Include="LevelLoader.cl" />
+  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>

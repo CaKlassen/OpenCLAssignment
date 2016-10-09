@@ -2,6 +2,7 @@
 
 #include <iostream>
 #include <fstream>
+#include "CLsetUp.h"
 
 using std::ifstream;
 using std::getline;
@@ -35,6 +36,38 @@ bool Level::initialize(string filename)
 	if (!file.is_open())
 		return false;
 
+	// Create the OpenCL wrapper
+	CLsetUp cl("LevelLoader.cl", "loadLevel");
+
+	// Read the file into a string
+	string contents((std::istreambuf_iterator<char>(file)),
+		std::istreambuf_iterator<char>());
+	char* rawContents = (char*)contents.c_str();
+	int length = strlen(rawContents);
+
+	int* levelTiles = new int[length];
+
+	// Set up memory objects in OpenCL
+	cl.AddMemObject(clCreateBuffer(cl.getVars().context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, sizeof(char) * length, rawContents, NULL));
+	cl.AddMemObject(clCreateBuffer(cl.getVars().context, CL_MEM_READ_WRITE, sizeof(int) * length, NULL, NULL));
+
+	cl.SetKernelArgs();
+
+	// Execute the level loader kernel
+	size_t globalWorkSize[] = { length };
+	size_t localWorkSize[] = { 1 };
+
+	cl.QueueKernel(globalWorkSize, localWorkSize);
+
+	// Retrieve the output
+	cl.getOutput(sizeof(int) * length, levelTiles);
+
+
+	cout << "\nPrinting output:\n\n";
+	for (int i = 0; i < length; i++)
+		cout << levelTiles[i] << " ";
+
+	/*
 	// Load the file into the array
 	string line;
 	int lineWidth = 0;
@@ -101,6 +134,7 @@ bool Level::initialize(string filename)
 	finalPath = PathfinderUtils::Astar(getGoalNode(), getStartNode());
 
 	return true;
+	*/
 }
 
 void Level::draw()

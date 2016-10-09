@@ -288,7 +288,7 @@ void CLsetUp::getOutput(int arraySize, void *result)
 {
 	cl_int errNum;
 
-	errNum = clEnqueueReadBuffer(CLvars.commandQueue, CLvars.memObjects[2], CL_TRUE,
+	errNum = clEnqueueReadBuffer(CLvars.commandQueue, CLvars.memObjects.back(), CL_TRUE,
 		0, arraySize, result,
 		0, NULL, NULL);
 

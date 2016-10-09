@@ -18,9 +18,6 @@ int main(void)
 
 	level.draw();
 
-	// TODO: Find a path from the start to the goal
-
-
 	// Wait for input
 	getchar();
 
