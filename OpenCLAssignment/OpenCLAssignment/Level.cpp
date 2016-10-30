@@ -49,11 +49,11 @@ bool Level::initialize(string filename, bool parallel)
 	if (parallel)
 	{
 		// Create the OpenCL wrapper
-		CLsetUp cl("LevelLoader.cl", "loadLevel");
+		CLsetUp cl("LevelLoader.cl", "loadLevel", CPU);
 
 		// Set up memory objects in OpenCL
-		cl.AddMemObject(clCreateBuffer(cl.getVars().context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, sizeof(char) * length, rawContents, NULL));
-		cl.AddMemObject(clCreateBuffer(cl.getVars().context, CL_MEM_READ_WRITE, sizeof(NODE_TYPE) * length, NULL, NULL));
+		cl.AddMemObject(clCreateBuffer(cl.CLvars.Contexts[cl.CPUindex], CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, sizeof(char) * length, rawContents, NULL), CPU, false);
+		cl.AddMemObject(clCreateBuffer(cl.CLvars.Contexts[cl.CPUindex], CL_MEM_READ_WRITE, sizeof(NODE_TYPE) * length, NULL, NULL),CPU, true);
 
 		cl.SetKernelArgs();
 
@@ -61,10 +61,10 @@ bool Level::initialize(string filename, bool parallel)
 		size_t globalWorkSize[] = { length };
 		size_t localWorkSize[] = { 1 };
 
-		cl.QueueKernel(globalWorkSize, localWorkSize);
+		cl.QueueKernel(globalWorkSize, localWorkSize,CPU);
 
 		// Retrieve the output
-		cl.getOutput(sizeof(NODE_TYPE) * length, levelTiles);
+		cl.getOutput(sizeof(NODE_TYPE) * length, levelTiles, 0,0);
 
 		// Add a printing buffer for cleanliness
 		cout << endl << endl;

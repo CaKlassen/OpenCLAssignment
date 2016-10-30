@@ -1,315 +1,477 @@
 #include "CLsetUp.h"
 
-//constructor
-CLsetUp::CLsetUp(char* KernelfileName, char* kernelName)
+
+CLsetUp::CLsetUp(char* kernelfileName, char* kernelName, DEVICE_FLAG df)
 {
-	this->fileName = KernelfileName;
+	this->fileName = kernelfileName;
 	this->kernelName = kernelName;
-
-	if (!CheckError(CreateContext()))
+	dev_config = df;
+	CPUindex = 0;
+	GPUindex = 0;
+	cl_int err;//holds results for error checking
+	cl_uint numPlatsFound;
+	CLvars.PlatformIDs.resize(3);
+	//FIND PLATFORMS
+	err = clGetPlatformIDs(MAX_PLAT, &CLvars.PlatformIDs[0], &numPlatsFound);
+	if (!CheckError(err))
 	{
-		std::cerr << "failed to create context\nexiting" << std::endl;
-		getchar();
-		exit(1);
+		cout << "ERROR: failed to find platform IDs" << endl;
 	}
-	
-	
-	if (!CheckError(CreateCommandQueue()))
+
+
+	if (CLvars.PlatformIDs[2] == NULL)
 	{
-		std::cerr << "failed to create command queue\nexiting" << std::endl;
-		getchar();
-		exit(1);
+		CLvars.PlatformIDs.pop_back();
 	}
-	
-	
-	if(!CheckError(CreateProgram()))
-	{
-		std::cerr << "failed to create program\nexiting" << std::endl;
-		getchar();
-		exit(1);
-	}
-	
-	if(!CheckError(CreateKernel()))
-	{
-		std::cerr << "failed to create kernel\nexiting" << std::endl;
-		getchar();
-		exit(1);
-	}
-}
 
-//destructor
-CLsetUp::~CLsetUp()
-{
-
-}
-
-
-//  Create an OpenCL context on the first available platform using
-//  either a GPU or CPU depending on what is available.
-bool CLsetUp::CreateContext()
-{
-	// First, select an OpenCL platform to run on.  For this example, we
-	// simply choose the first available platform.  Normally, you would
-	// query for all available platforms and select the most appropriate one.
-	cl_platform_id firstPlatformId;
-	cl_uint numPlatforms;
-	cl_int errNum = clGetPlatformIDs(1, &firstPlatformId, &numPlatforms);
-	if (!CheckError(errNum))
-		return 1;
-	if (numPlatforms <= 0)
-	{
-		std::cerr << "Failed to find any OpenCL platforms." << std::endl;
-		return 1;
-	}
-	std::cout << std::endl << numPlatforms << " platforms in total" << std::endl;
-
-
-	// Get information about the platform
+	//DEBUG
 	char pname[1024];
 	size_t retsize;
-	errNum = clGetPlatformInfo(firstPlatformId, CL_PLATFORM_NAME, sizeof(pname), (void *)pname, &retsize);
-
-	if (!CheckError(errNum))
-		return 1;
-
-	std::cout << std::endl << "Selected platform <" << pname << ">" << std::endl;
-
-	// Next, create an OpenCL context on the platform
-	cl_context_properties contextProperties[] =
+	for (int i = 0; i < CLvars.PlatformIDs.size(); ++i)
 	{
-		CL_CONTEXT_PLATFORM,
-		(cl_context_properties)firstPlatformId,
-		0
-	};
-
-	CLvars.context = NULL;
-	CLvars.context = clCreateContextFromType(contextProperties, CL_DEVICE_TYPE_ALL, NULL, NULL, &errNum);
+		clGetPlatformInfo(CLvars.PlatformIDs[i], CL_PLATFORM_NAME, sizeof(pname), (void*)pname, &retsize);
+		cout << pname << endl;
+	}
+	//DUBUG
 	
-	
-	if (!CheckError(errNum))
-		return 1;
 
-	return 0;
+	//CHOOSE SET UP BASED ON DEVICE_FLAG
+	switch (df)
+	{
+	case CPU:
+		createCPU();
+		break;
+	case GPU:
+		createGPU();
+		break;
+	case CPU_GPU:
+		GPUindex = 1;//GPU info will be at index 1 in all lists
+		createCPU();
+		createGPU();
+		break;
+	}
+
 }
 
-//  Create a command queue on the first device available on the context
-bool CLsetUp::CreateCommandQueue()
+CLsetUp::~CLsetUp()
 {
-	// Get number of devices
-	cl_int numDevices;
-	size_t retSize;
-	cl_int errNum; 
-	clGetContextInfo(CLvars.context, CL_CONTEXT_NUM_DEVICES, sizeof(numDevices), (void *)&numDevices, &retSize);
-	//if (!CheckOpenCLError(errNum, "Could not get context info!"))
-	//	return NULL;
-	std::cout << std::endl << "There are " << numDevices << " devices." << std::endl;
-
-
-	// Get list of devices
-	cl_device_id *deviceList;
-	deviceList = (cl_device_id *)malloc(numDevices * sizeof(cl_device_id));
-	errNum = clGetContextInfo(CLvars.context, CL_CONTEXT_DEVICES, numDevices * sizeof(cl_device_id), (void *)deviceList, &retSize);
-	if (!CheckError(errNum))
-	{
-		std::cerr << " ERROR code " << errNum;
-		switch (errNum) {
-		case CL_INVALID_CONTEXT:
-			std::cerr << " (CL_INVALID_CONTEXT)";
-			break;
-		case CL_INVALID_VALUE:
-			std::cerr << " (CL_INVALID_VALUE)";
-			break;
-		case CL_OUT_OF_RESOURCES:
-			std::cerr << " (CL_OUT_OF_RESOURCES)";
-			break;
-		case CL_OUT_OF_HOST_MEMORY:
-			std::cerr << " (CL_OUT_OF_HOST_MEMORY)";
-			break;
-		default:
-			break;
-		}
-		std::cerr << " size = " << numDevices * sizeof(cl_device_id) << ";" << retSize << std::endl;
-		return 1;
-	}
-
-
-	// Get device information for each device
-	cl_device_type devType;
-	std::cout << std::endl << "Device list:" << std::endl;
-	for (int i = 0; i<numDevices; i++)
-	{
-
-		std::cout << "   " << deviceList[i] << ": ";
-
-		// device type
-		errNum = clGetDeviceInfo(deviceList[i], CL_DEVICE_TYPE, sizeof(cl_device_type), (void *)&devType, &retSize);
-		if (!CheckError(errNum))
-		{
-			free(deviceList);
-			return 1;
-		}
-		std::cout << " type " << devType << ":";
-		if (devType & CL_DEVICE_TYPE_CPU)
-			std::cout << " CPU";
-		if (devType & CL_DEVICE_TYPE_GPU)
-			std::cout << " GPU";
-		if (devType & CL_DEVICE_TYPE_ACCELERATOR)
-			std::cout << " accelerator";
-		if (devType & CL_DEVICE_TYPE_DEFAULT)
-			std::cout << " default";
-
-		// device name
-		char devName[1024];
-		errNum = clGetDeviceInfo(deviceList[i], CL_DEVICE_NAME, 1024, (void *)devName, &retSize);
-		if (!CheckError(errNum))
-		{
-			free(deviceList);
-			return 1;
-		}
-		//std::cout << " name=<" << devName << ">" << std::endl;
-
-	}
-	std::cout << std::endl;
-
-
-	// In this example, we just choose the first available device.  In a
-	// real program, you would likely use all available devices or choose
-	// the highest performance device based on OpenCL device queries
-	CLvars.commandQueue = clCreateCommandQueue(CLvars.context, deviceList[0], 0, NULL);
-	if (CLvars.commandQueue == NULL)
-	{
-		free(deviceList);
-		std::cerr << "Failed to create commandQueue for device 0";
-		return 1;
-	}
-
-	CLvars.device = deviceList[0];
-
-	free(deviceList);
-
-	return 0;
+	cleanUp();
 }
 
-//  Create an OpenCL program from the kernel source file
-bool CLsetUp::CreateProgram()
+///<summary>sets up a single CPU for use</summary>
+void CLsetUp::createCPU()
 {
-	cl_int errNum;
+	cl_int err;
 
-	std::ifstream kernelFile(fileName, std::ios::in);
+	//<<<<<<<<<<<<<<<<<<<<<<<<<<<<< SET UP PLATFORM AND DEVICE START <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+	
+	//LOOP THROUGH PLATFORMS
+	for (int i = 0; i < CLvars.PlatformIDs.size(); ++i)
+	{
+		
+		//CHECK FOR CPU DEVICE ON PLATFORM
+		err = clGetDeviceIDs(CLvars.PlatformIDs[i], CL_DEVICE_TYPE_CPU, MAX_DEV, &CPUdevices[0], NULL);
+		if (CheckError(err))//if success (device was found)
+		{
+			//CREATE CONTEXT
+			CLvars.DeviceIDs.push_back(CPUdevices[0]);//add the device
+			cl_context tempContext = clCreateContext(NULL, 1, &CLvars.DeviceIDs[0], NULL, NULL, &err);//creat context
+			if (CheckError(err))
+			{
+				CLvars.Contexts.push_back(tempContext);//add to contexts list if OK
+				break;//stop searching
+			}
+		}
+	}
+	//<<<<<<<<<<<<<<<<<<<<<<<<<<<<< SET UP PLATFORM AND DEVICE END <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+
+
+
+	//<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<< CREATE COMMAND QUEUE START <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+	cl_command_queue tempCQ = clCreateCommandQueue(CLvars.Contexts[CPU], CLvars.DeviceIDs[CPU], 0, &err);
+	if (CheckError(err))
+		CLvars.CommandQueues.push_back(tempCQ);//CQ created successfully; add it to CQ list
+	else
+		cout << "failed to create command queue for CPU" << endl;
+	//<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<< CREATE COMMAND QUEUE END <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+
+
+	//<<<<<<<<<<<<<<<<<<<<<<<<<<<<<< CREATE AND BUILD PROGRAM START <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+
+	//open kernel file
+	ifstream kernelFile(fileName, ios::in);
 	if (!kernelFile.is_open())
 	{
-		std::cerr << "Failed to open file for reading: " << fileName << std::endl;
-		return 1;
+		cerr << "Failed to open file for reading: " << fileName << "\n exiting" << endl;
+		getchar();
+		exit(1);
 	}
 
-	std::ostringstream oss;
+	//read kerenel file
+	ostringstream oss;
 	oss << kernelFile.rdbuf();
 
-	std::string srcStdStr = oss.str();
+	string srcStdStr = oss.str();
 	const char *srcStr = srcStdStr.c_str();
-	CLvars.program = clCreateProgramWithSource(CLvars.context, 1,
-		(const char**)&srcStr,
-		NULL, NULL);
 
-	if (CLvars.program == NULL)
+	//create program
+	cl_program tempProg = clCreateProgramWithSource(CLvars.Contexts[CPU], 1,
+		(const char**)&srcStr, NULL, &err);
+
+	//check error to make sure it worked
+	if (CheckError(err))
 	{
-		std::cerr << "Failed to create CL program from source." << std::endl;
-		return 1;
+		CLvars.Programs.push_back(tempProg);//success; add to programs list
+	}
+	else
+	{
+		cerr << "failed to create program for CPU; exiting" << endl;
+		getchar();
+		exit(1);
 	}
 
-	errNum = clBuildProgram(CLvars.program, 0, NULL, NULL, NULL, NULL);
-	if (errNum != CL_SUCCESS)
+	//build program
+	err = clBuildProgram(CLvars.Programs[CPU], 1, &CLvars.DeviceIDs[CPU], NULL, NULL, NULL);
+	if (!CheckError(err))
 	{
-		// Determine the reason for the error
-		char buildLog[16384];
-		clGetProgramBuildInfo(CLvars.program, CLvars.device, CL_PROGRAM_BUILD_LOG,
-			sizeof(buildLog), buildLog, NULL);
-
-		std::cerr << "Error in kernel: " << std::endl;
-		std::cerr << buildLog;
-		clReleaseProgram(CLvars.program);
-		return 1;
+		cerr << "failed to build program for CPU; exiting" << endl;
+		getchar();
+		exit(1);
 	}
+	//<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<< CREATE AND BUILD PROGRAM END <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 
-	return 0;
-}
-
-//create the kernel
-bool CLsetUp::CreateKernel()
-{
-	CLvars.kernel = clCreateKernel(CLvars.program, kernelName, NULL);
-	if (CLvars.kernel == NULL)
+	//<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<< CREATE KERNEL START <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+	cl_kernel kern = clCreateKernel(CLvars.Programs[CPU], kernelName, &err);
+	if (!CheckError(err))
 	{
-		std::cerr << "Failed to create kernel" << std::endl;
-		return 1;
+		cerr << "failed to create kernel for CPU; exiting" << endl;
+		getchar();
+		exit(1);
 	}
-
-	return 0;
-}
-
-
-//note that the type of second parameter will change depending on what the type of the array is
-bool CLsetUp::AddMemObject(cl_mem buff)
-{
-	CLvars.memObjects.push_back(buff);
-	return 0;
-}
-
-//set the kernel arguments
-bool CLsetUp::SetKernelArgs()
-{
-	cl_int error;
-
-	for (int i = 0; i < CLvars.memObjects.size(); i++)
+	else
 	{
-		error = clSetKernelArg(CLvars.kernel, i, sizeof(cl_mem), &CLvars.memObjects[i]);
+		CLvars.Kernels.push_back(kern);
+	}
+	//<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<< CREATE KERNEL END <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+}
 
-		if (!CheckError(error))
+
+///<summary>sets up a single CPU for use</summary>
+void CLsetUp::createGPU()
+{
+	cl_int err;
+
+	//<<<<<<<<<<<<<<<<<<<<<<<<<<<<< SET UP PLATFORM AND DEVICE START <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+
+	//LOOP THROUGH PLATFORMS
+	for (int i = 0; i < CLvars.PlatformIDs.size(); ++i)
+	{
+		//CHECK FOR GPU DEVICE ON PLATFORM
+		err = clGetDeviceIDs(CLvars.PlatformIDs[i], CL_DEVICE_TYPE_GPU, MAX_DEV, &GPUdevices[0], NULL);
+		if (CheckError(err))//if success (device was found)
 		{
-			std::cerr << "Failed to set kernel arguments" << std::endl;
-			return 1;
+			//CREATE CONTEXT
+			CLvars.DeviceIDs.push_back(GPUdevices[0]);//add the device
+			cl_context tempContext = clCreateContext(NULL, 1, &CLvars.DeviceIDs[0], NULL, NULL, &err);//creat context
+			if (CheckError(err))
+			{
+				CLvars.Contexts.push_back(tempContext);//add to contexts list if OK
+				break;//stop searching
+			}
 		}
 	}
+	//<<<<<<<<<<<<<<<<<<<<<<<<<<<<< SET UP PLATFORM AND DEVICE END <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+
+
+
+	//<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<< CREATE COMMAND QUEUE START <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+	cl_command_queue tempCQ = clCreateCommandQueue(CLvars.Contexts[GPUindex], CLvars.DeviceIDs[GPUindex], 0, &err);
+	if (CheckError(err))
+		CLvars.CommandQueues.push_back(tempCQ);//CQ created successfully; add it to CQ list
+	else
+		cout << "failed to create command queue for GPU" << endl;
+	//<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<< CREATE COMMAND QUEUE END <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+
+
+	//<<<<<<<<<<<<<<<<<<<<<<<<<<<<<< CREATE AND BUILD PROGRAM START <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+
+	//open kernel file
+	ifstream kernelFile(fileName, ios::in);
+	if (!kernelFile.is_open())
+	{
+		cerr << "Failed to open file for reading: " << fileName << "\n exiting" << endl;
+		getchar();
+		exit(1);
+	}
+
+	//read kerenel file
+	ostringstream oss;
+	oss << kernelFile.rdbuf();
+
+	string srcStdStr = oss.str();
+	const char *srcStr = srcStdStr.c_str();
+
+	//create program
+	cl_program tempProg = clCreateProgramWithSource(CLvars.Contexts[GPUindex], 1,
+		(const char**)&srcStr, NULL, &err);
+
+	//check error to make sure it worked
+	if (CheckError(err))
+	{
+		CLvars.Programs.push_back(tempProg);//success; add to programs list
+	}
+	else
+	{
+		cerr << "failed to create program for GPU; exiting" << endl;
+		getchar();
+		exit(1);
+	}
+
+	//build program
+	err = clBuildProgram(CLvars.Programs[GPUindex], 1, &CLvars.DeviceIDs[GPUindex], NULL, NULL, NULL);
+	if (!CheckError(err))
+	{
+		cerr << "failed to build program for GPU; exiting" << endl;
+		getchar();
+		exit(1);
+	}
+	//<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<< CREATE AND BUILD PROGRAM END <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+
+
+	//<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<< CREATE KERNEL START <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+	cl_kernel kern = clCreateKernel(CLvars.Programs[GPUindex], kernelName, &err);
+	if (!CheckError(err))
+	{
+		cerr << "failed to create kernel for CPU; exiting" << endl;
+		getchar();
+		exit(1);
+	}
+	else
+	{
+		CLvars.Kernels.push_back(kern);
+	}
+	//<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<< CREATE KERNEL END <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+}
+
+///<summary>adds a memory object buffer</summary>
+///<param name= buff>the buffer object</param>
+///<param name= df>the device type; CPU or GPU. DO NOT USE CPU_GPU</param>
+///<param name= outputBuffer>is this the output buffer?</param>
+bool CLsetUp::AddMemObject(cl_mem buff, DEVICE_FLAG df, bool outputBuff)
+{
+	if (df == CPU)
+	{
+		CLvars.memObjectsCPU.push_back(buff);
+		if (outputBuff)
+			CLvars.memObjectOutput = buff;
+	}
+	else if (df == GPU)
+	{
+		CLvars.memObjectsGPU.push_back(buff);
+		if (outputBuff)
+			CLvars.memObjectOutput = buff;
+	}
 
 	return 0;
 }
 
-//run the kernel
-void CLsetUp::QueueKernel(size_t globalWorkSize[], size_t localWorkSize[])
+///<summary>sets the Kernel arguments</summary>
+bool CLsetUp::SetKernelArgs()
 {
-	cl_int errNum;
-	errNum = clEnqueueNDRangeKernel(CLvars.commandQueue, CLvars.kernel, 1, NULL,
-		globalWorkSize, localWorkSize,
-		0, NULL, NULL);
-}
+	cl_int err;
 
-//read output back to host
-void CLsetUp::getOutput(int arraySize, void *result)
-{
-	cl_int errNum;
-
-	errNum = clEnqueueReadBuffer(CLvars.commandQueue, CLvars.memObjects.back(), CL_TRUE,
-		0, arraySize, result,
-		0, NULL, NULL);
-
-	if (!CheckError(errNum))
+	switch (dev_config)
 	{
-		std::cerr << "Failed reaing back to host" << std::endl;
+	case CPU://ONLY CPU
+		for (int i = 0; i < CLvars.memObjectsCPU.size(); i++)
+		{
+			err = clSetKernelArg(CLvars.Kernels[CPUindex], i, sizeof(cl_mem), &CLvars.memObjectsCPU[i]);
+
+			if (!CheckError(err))
+			{
+				std::cerr << "Failed to set kernel arguments  for CPU" << std::endl;
+				return false;
+			}
+		}
+		break;
+	case GPU://ONLY GPU
+		for (int i = 0; i < CLvars.memObjectsGPU.size(); i++)
+		{
+			err = clSetKernelArg(CLvars.Kernels[GPUindex], i, sizeof(cl_mem), &CLvars.memObjectsGPU[i]);
+
+			if (!CheckError(err))
+			{
+				std::cerr << "Failed to set kernel arguments  for GPU" << std::endl;
+				return false;
+			}
+		}
+		break;
+	case CPU_GPU://BOTH CPU AND GPU
+		for (int i = 0; i < CLvars.memObjectsCPU.size(); i++)
+		{
+			err = clSetKernelArg(CLvars.Kernels[CPUindex], i, sizeof(cl_mem), &CLvars.memObjectsCPU[i]);
+
+			if (!CheckError(err))
+			{
+				std::cerr << "Failed to set kernel arguments for CPU" << std::endl;
+				return false;
+			}
+		}
+
+		for (int i = 0; i < CLvars.memObjectsGPU.size(); i++)
+		{
+			err = clSetKernelArg(CLvars.Kernels[GPUindex], i, sizeof(cl_mem), &CLvars.memObjectsGPU[i]);
+
+			if (!CheckError(err))
+			{
+				std::cerr << "Failed to set kernel arguments for GPU" << std::endl;
+				return false;
+			}
+		}
+		break;
+	}
+
+	return true;
+}
+
+///<summary>reads the output back from the device(s)</summary>
+///<param name= globalWorkSize>The Global work size of the kernel</param>//size of half our rawdata array?
+///<param name= localWorkSize>The Local work size of the kernel</param>
+///<param name=df>The offest in bytes in the buffer object to read from</param>
+void CLsetUp::QueueKernel(size_t globalWorkSize[], size_t localWorkSize[], DEVICE_FLAG df)
+{
+	cl_int err;
+
+	switch (df)
+	{
+	case CPU://CPU ONLY
+		err = clEnqueueNDRangeKernel(CLvars.CommandQueues[CPUindex], CLvars.Kernels[CPUindex], 1, NULL,
+			globalWorkSize, localWorkSize,
+			0, NULL, NULL);
+		break;
+	case GPU://GPU ONLY
+		err = clEnqueueNDRangeKernel(CLvars.CommandQueues[GPUindex], CLvars.Kernels[GPUindex], 1, NULL,
+			globalWorkSize, localWorkSize,
+			0, NULL, NULL);
+		break;
+	case CPU_GPU:
+		//CPU ENQUEUE
+		err = clEnqueueNDRangeKernel(CLvars.CommandQueues[CPUindex], CLvars.Kernels[CPUindex], 1, NULL,
+			globalWorkSize, localWorkSize,
+			0, NULL, NULL);
+		//GPU ENQUEUE
+		err = clEnqueueNDRangeKernel(CLvars.CommandQueues[GPUindex], CLvars.Kernels[GPUindex], 1, NULL,
+			globalWorkSize, localWorkSize,
+			0, NULL, NULL);
+		break;
 	}
 }
 
-//get strcut containing important OpenCL variables
-CL CLsetUp::getVars()
+//NOTE about the offset; should be added to the result pointer so that you are writing into the correct
+//spot in the array. whichever device was given the first half will have an offset of 0.
+//This is only needed for the CPU_GPU case.
+///<summary>reads the output back from the device(s)</summary>
+///<param name= arraySize>The size in bytes to read</param>
+///<param name= result>The size in bytes of data being read</param>
+///<param name=offest>The offest in bytes in the buffer object to read from</param> 
+void CLsetUp::getOutput(int arraySize, void * result, size_t offsetCPU, size_t offsetGPU)
 {
-	return CLvars;
+	cl_int err;
+
+	switch (dev_config)
+	{
+	case CPU:
+		err = clEnqueueReadBuffer(CLvars.CommandQueues[CPUindex], CLvars.memObjectOutput, CL_TRUE,
+			0, arraySize, result,
+			0, NULL, NULL);
+
+		if (!CheckError(err))
+			cerr << "failed reading data back from CPU" << endl;
+
+		break;
+
+	case GPU:
+		err = clEnqueueReadBuffer(CLvars.CommandQueues[GPUindex], CLvars.memObjectOutput, CL_TRUE,
+			0, arraySize, result,
+			0, NULL, NULL);
+
+		if (!CheckError(err))
+			cerr << "failed reading data back from GPU" << endl;
+
+		break;
+
+	case CPU_GPU:
+		err = clEnqueueReadBuffer(CLvars.CommandQueues[CPUindex], CLvars.memObjectOutput, CL_FALSE,
+			0, arraySize, &result + offsetCPU,
+			0, NULL, NULL);
+
+		if (!CheckError(err))
+			cerr << "failed reading data back from CPU" << endl;
+
+		err = clEnqueueReadBuffer(CLvars.CommandQueues[GPUindex], CLvars.memObjectOutput, CL_FALSE,
+			0, arraySize, &result + offsetGPU,
+			0, NULL, NULL);
+
+		if (!CheckError(err))
+			cerr << "failed reading data back from GPU" << endl;
+
+		break;
+	}
+
 }
 
-//check for error
-bool CLsetUp::CheckError(cl_int error)
+void CLsetUp::cleanUp()
 {
-	if (error != CL_SUCCESS) {
-		std::cerr << "OpenCL call failed with error " << error << std::endl;
+	//release all command queues
+	for (int i = 0; i < CLvars.CommandQueues.size(); ++i)
+	{
+		clReleaseCommandQueue(CLvars.CommandQueues[i]);
+	}
+
+	//release all memory object buffers
+	for (int i = 0; i < CLvars.memObjectsCPU.size(); ++i)
+	{
+		clReleaseMemObject(CLvars.memObjectsCPU[i]);
+	}
+
+	for (int i = 0; i < CLvars.memObjectsGPU.size(); ++i)
+	{
+		clReleaseMemObject(CLvars.memObjectsGPU[i]);
+	}
+
+	clReleaseMemObject(CLvars.memObjectOutput);
+
+	//release all kernels
+	for (int i = 0; i < CLvars.Kernels.size(); ++i)
+	{
+		clReleaseKernel(CLvars.Kernels[i]);
+	}
+
+	//release all programs
+	for (int i = 0; i < CLvars.Programs.size(); ++i)
+	{
+		clReleaseProgram(CLvars.Programs[i]);
+	}
+
+	//release all contexts
+	for (int i = 0; i < CLvars.Contexts.size(); ++i)
+	{
+		clReleaseContext(CLvars.Contexts[i]);
+	}
+
+	//release all devices
+	for (int i = 0; i < CLvars.DeviceIDs.size(); ++i)
+	{
+		clReleaseDevice(CLvars.DeviceIDs[i]);
+	}
+}
+
+///<summary>Error checking; returns true if OK, false it failed</summary>
+///<param name= err>the error to check</param>
+bool CLsetUp::CheckError(cl_int err)
+{
+	if (err != CL_SUCCESS)
 		return false;
-	}
+
 	return true;
 }
