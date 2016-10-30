@@ -18,8 +18,12 @@ CLsetUp::CLsetUp(char* kernelfileName, char* kernelName, DEVICE_FLAG df)
 		cout << "ERROR: failed to find platform IDs" << endl;
 	}
 
-
 	if (CLvars.PlatformIDs[2] == NULL)
+	{
+		CLvars.PlatformIDs.pop_back();
+	}
+
+	if (CLvars.PlatformIDs[1] == NULL)
 	{
 		CLvars.PlatformIDs.pop_back();
 	}
