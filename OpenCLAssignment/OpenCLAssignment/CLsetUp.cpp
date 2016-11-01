@@ -246,7 +246,7 @@ void CLsetUp::createGPU()
 	cl_kernel kern = clCreateKernel(CLvars.Programs[GPUindex], kernelName, &err);
 	if (!CheckError(err))
 	{
-		cerr << "failed to create kernel for CPU; exiting" << endl;
+		cerr << "failed to create kernel for GPU; exiting" << endl;
 		getchar();
 		exit(1);
 	}
@@ -265,15 +265,18 @@ bool CLsetUp::AddMemObject(cl_mem buff, DEVICE_FLAG df, bool outputBuff)
 {
 	if (df == CPU)
 	{
-		CLvars.memObjectsCPU.push_back(buff);
 		if (outputBuff)
 			CLvars.memObjectOutput = buff;
+		else
+			CLvars.memObjectsCPU.push_back(buff);
+	
 	}
 	else if (df == GPU)
 	{
-		CLvars.memObjectsGPU.push_back(buff);
 		if (outputBuff)
 			CLvars.memObjectOutput = buff;
+		else
+			CLvars.memObjectsGPU.push_back(buff);
 	}
 
 	return 0;
@@ -293,9 +296,16 @@ bool CLsetUp::SetKernelArgs()
 
 			if (!CheckError(err))
 			{
-				std::cerr << "Failed to set kernel arguments  for CPU" << std::endl;
+				std::cerr << "Failed to set kernel arguments for CPU; input buffer" << std::endl;
 				return false;
 			}
+		}
+
+		err = clSetKernelArg(CLvars.Kernels[CPUindex], CLvars.memObjectsCPU.size(), sizeof(cl_mem), &CLvars.memObjectOutput);
+		if (!CheckError(err))
+		{
+			std::cerr << "Failed to set kernel arguments for CPU; output buffer" << std::endl;
+			return false;
 		}
 		break;
 	case GPU://ONLY GPU
@@ -305,12 +315,20 @@ bool CLsetUp::SetKernelArgs()
 
 			if (!CheckError(err))
 			{
-				std::cerr << "Failed to set kernel arguments  for GPU" << std::endl;
+				std::cerr << "Failed to set kernel arguments  for GPU; input buffer" << std::endl;
 				return false;
 			}
 		}
+
+		err = clSetKernelArg(CLvars.Kernels[GPUindex], CLvars.memObjectsGPU.size(), sizeof(cl_mem), &CLvars.memObjectOutput);
+		if (!CheckError(err))
+		{
+			std::cerr << "Failed to set kernel arguments for GPU; output buffer" << std::endl;
+			return false;
+		}
 		break;
 	case CPU_GPU://BOTH CPU AND GPU
+		//CPU
 		for (int i = 0; i < CLvars.memObjectsCPU.size(); i++)
 		{
 			err = clSetKernelArg(CLvars.Kernels[CPUindex], i, sizeof(cl_mem), &CLvars.memObjectsCPU[i]);
@@ -322,6 +340,15 @@ bool CLsetUp::SetKernelArgs()
 			}
 		}
 
+		err = clSetKernelArg(CLvars.Kernels[CPUindex], CLvars.memObjectsCPU.size(), sizeof(cl_mem), &CLvars.memObjectOutput);
+		if (!CheckError(err))
+		{
+			std::cerr << "Failed to set kernel arguments for CPU; output buffer" << std::endl;
+			return false;
+		}
+
+
+		//GPU
 		for (int i = 0; i < CLvars.memObjectsGPU.size(); i++)
 		{
 			err = clSetKernelArg(CLvars.Kernels[GPUindex], i, sizeof(cl_mem), &CLvars.memObjectsGPU[i]);
@@ -332,6 +359,14 @@ bool CLsetUp::SetKernelArgs()
 				return false;
 			}
 		}
+
+		err = clSetKernelArg(CLvars.Kernels[GPUindex], CLvars.memObjectsGPU.size(), sizeof(cl_mem), &CLvars.memObjectOutput);
+		if (!CheckError(err))
+		{
+			std::cerr << "Failed to set kernel arguments for GPU; output buffer" << std::endl;
+			return false;
+		}
+
 		break;
 	}
 
@@ -436,14 +471,17 @@ void CLsetUp::cleanUp()
 	for (int i = 0; i < CLvars.memObjectsCPU.size(); ++i)
 	{
 		clReleaseMemObject(CLvars.memObjectsCPU[i]);
+		
 	}
 
 	for (int i = 0; i < CLvars.memObjectsGPU.size(); ++i)
 	{
 		clReleaseMemObject(CLvars.memObjectsGPU[i]);
+		
 	}
 
 	clReleaseMemObject(CLvars.memObjectOutput);
+	
 
 	//release all kernels
 	for (int i = 0; i < CLvars.Kernels.size(); ++i)
@@ -468,6 +506,20 @@ void CLsetUp::cleanUp()
 	{
 		clReleaseDevice(CLvars.DeviceIDs[i]);
 	}
+
+	//if (dev_config == CPU)
+	//{
+	//	free(CLvars.memObjectsCPU[0]);
+	//}
+	//
+	//if (dev_config == GPU)
+	//{
+	//	free(CLvars.memObjectsGPU[0]);
+	//}
+	//free(CLvars.memObjectOutput);
+	free(CLvars.DeviceIDs[0]);
+
+	
 }
 
 ///<summary>Error checking; returns true if OK, false it failed</summary>
