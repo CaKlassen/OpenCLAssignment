@@ -13,75 +13,71 @@ using std::clock_t;
 int main(void)
 {
 	clock_t start;
-	double regularDuration;
-	double parallelCPUDuration;
-	double parallelGPUDuration;
-	double parallelBothDuration;
+	double regularDuration = 0;
+	double parallelCPUDuration = 0;
+	double parallelGPUDuration = 0;
+	double parallelBothDuration = 0;
 
 	// Perform the non-parallel test
 	Level regularLevel;
 
-	CLsetUp *cl = new CLsetUp("LevelLoader.cl", "loadLevel", CPU);
+	CLsetUp *clA = new CLsetUp("LevelLoader.cl", "loadLevel", CPU);
 
 	cout << "===== STARTING REGULAR TEST =====" << endl;
 	start = clock();
 
-	if (!regularLevel.initialize("level.txt", false, *cl))
+	if (!regularLevel.initialize("level.txt", false, *clA))
 	{
 		cerr << "Failed to load the level file." << endl;
 		return 1;
 	}
 
 	regularDuration = (clock() - start) / (double)CLOCKS_PER_SEC;
-	delete cl;
 	
 	// Perform the parallel test (CPU)
 	Level parallelCPULevel;
-	cl = new CLsetUp("LevelLoader.cl", "loadLevel", CPU);
+	CLsetUp *clB = new CLsetUp("LevelLoader.cl", "loadLevel", CPU);
 
 	cout << endl << "===== STARTING PARALLEL TEST (CPU) =====" << endl;
 	start = clock();
 
-	if (!parallelCPULevel.initialize("level.txt", true, *cl))
+	if (!parallelCPULevel.initialize("level.txt", true, *clB))
 	{
 		cerr << "Failed to load the level file." << endl;
 		return 1;
 	}
 
 	parallelCPUDuration = (clock() - start) / (double)CLOCKS_PER_SEC;
-	delete cl;
 
 	// Perform the parallel test (GPU)
 	Level parallelGPULevel;
-	cl = new CLsetUp("LevelLoader.cl", "loadLevel", GPU);
+	CLsetUp *clC = new CLsetUp("LevelLoader.cl", "loadLevel", GPU);
 
 	cout << endl << "===== STARTING PARALLEL TEST (GPU) =====" << endl;
 	start = clock();
 
-	if (!parallelGPULevel.initialize("level.txt", true, *cl))
+	if (!parallelGPULevel.initialize("level.txt", true, *clC))
 	{
 		cerr << "Failed to load the level file." << endl;
 		return 1;
 	}
 
 	parallelGPUDuration = (clock() - start) / (double)CLOCKS_PER_SEC;
-	delete cl;
 
 	// Perform the parallel test (CPU & GPU)
 	Level parallelBothLevel;
-	cl = new CLsetUp("LevelLoader.cl", "loadLevel", CPU_GPU);
+	CLsetUp *clD = new CLsetUp("LevelLoader.cl", "loadLevel", CPU_GPU);
 
 	cout << endl << "===== STARTING PARALLEL TEST (CPU & GPU) =====" << endl;
 	start = clock();
 
-	if (!parallelBothLevel.initialize("level.txt", true, *cl))
+	if (!parallelBothLevel.initialize("level.txt", true, *clD))
 	{
 		cerr << "Failed to load the level file." << endl;
 		return 1;
 	}
 
 	parallelBothDuration = (clock() - start) / (double)CLOCKS_PER_SEC;
-	delete cl;
 
 	parallelBothLevel.draw();
 
@@ -97,6 +93,12 @@ int main(void)
 
 	// Wait for input
 	getchar();
+	
+	// Clean up memory
+	delete clA;
+	delete clB;
+	delete clC;
+	delete clD;
 
 	return 0;
 }
