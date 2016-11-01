@@ -5,12 +5,14 @@
 using std::string;
 using std::deque;
 
+class CLsetUp;
+
 class Level
 {
 public:
 	Level();
 	~Level();
-	bool initialize(string filename, bool parallel);
+	bool initialize(string filename, bool parallel, CLsetUp &cl);
 	void draw();
 
 	node** getRawArray();

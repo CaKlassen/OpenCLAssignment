@@ -27,7 +27,7 @@ Level::~Level()
 	delete[] levelArray;
 }
 
-bool Level::initialize(string filename, bool parallel)
+bool Level::initialize(string filename, bool parallel, CLsetUp &cl)
 {
 	// Open the level file
 	ifstream file;
@@ -48,9 +48,6 @@ bool Level::initialize(string filename, bool parallel)
 
 	if (parallel)
 	{
-		// Create the OpenCL wrapper
-		CLsetUp cl("LevelLoader.cl", "loadLevel", CPU);
-
 		// Set up memory objects in OpenCL
 		cl.AddMemObject(clCreateBuffer(cl.CLvars.Contexts[cl.CPUindex], CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, sizeof(char) * length, rawContents, NULL), CPU, false);
 		cl.AddMemObject(clCreateBuffer(cl.CLvars.Contexts[cl.CPUindex], CL_MEM_READ_WRITE, sizeof(NODE_TYPE) * length, NULL, NULL),CPU, true);
