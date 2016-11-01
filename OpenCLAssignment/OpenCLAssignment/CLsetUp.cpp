@@ -59,7 +59,7 @@ CLsetUp::CLsetUp(char* kernelfileName, char* kernelName, DEVICE_FLAG df)
 
 CLsetUp::~CLsetUp()
 {
-	cleanUp();
+	//cleanUp();
 }
 
 ///<summary>sets up a single CPU for use</summary>
@@ -176,7 +176,7 @@ void CLsetUp::createGPU()
 		{
 			//CREATE CONTEXT
 			CLvars.DeviceIDs.push_back(GPUdevices[0]);//add the device
-			cl_context tempContext = clCreateContext(NULL, 1, &CLvars.DeviceIDs[0], NULL, NULL, &err);//creat context
+			cl_context tempContext = clCreateContext(NULL, 1, &GPUdevices[0], NULL, NULL, &err);//creat context
 			if (CheckError(err))
 			{
 				CLvars.Contexts.push_back(tempContext);//add to contexts list if OK
@@ -189,7 +189,7 @@ void CLsetUp::createGPU()
 
 
 	//<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<< CREATE COMMAND QUEUE START <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
-	cl_command_queue tempCQ = clCreateCommandQueue(CLvars.Contexts[GPUindex], CLvars.DeviceIDs[GPUindex], 0, &err);
+	cl_command_queue tempCQ = clCreateCommandQueue(CLvars.Contexts[GPUindex], GPUdevices[0], 0, &err);
 	if (CheckError(err))
 		CLvars.CommandQueues.push_back(tempCQ);//CQ created successfully; add it to CQ list
 	else
@@ -232,7 +232,7 @@ void CLsetUp::createGPU()
 	}
 
 	//build program
-	err = clBuildProgram(CLvars.Programs[GPUindex], 1, &CLvars.DeviceIDs[GPUindex], NULL, NULL, NULL);
+	err = clBuildProgram(CLvars.Programs[GPUindex], 1, &GPUdevices[0], NULL, NULL, NULL);
 	if (!CheckError(err))
 	{
 		cerr << "failed to build program for GPU; exiting" << endl;
@@ -471,17 +471,17 @@ void CLsetUp::cleanUp()
 	for (int i = 0; i < CLvars.memObjectsCPU.size(); ++i)
 	{
 		clReleaseMemObject(CLvars.memObjectsCPU[i]);
-		
+		free(CLvars.memObjectsCPU[i]);
 	}
 
 	for (int i = 0; i < CLvars.memObjectsGPU.size(); ++i)
 	{
 		clReleaseMemObject(CLvars.memObjectsGPU[i]);
-		
+		free(CLvars.memObjectsGPU[i]);
 	}
 
 	clReleaseMemObject(CLvars.memObjectOutput);
-	
+	free(CLvars.memObjectOutput);
 
 	//release all kernels
 	for (int i = 0; i < CLvars.Kernels.size(); ++i)
@@ -505,21 +505,8 @@ void CLsetUp::cleanUp()
 	for (int i = 0; i < CLvars.DeviceIDs.size(); ++i)
 	{
 		clReleaseDevice(CLvars.DeviceIDs[i]);
-	}
-
-	//if (dev_config == CPU)
-	//{
-	//	free(CLvars.memObjectsCPU[0]);
-	//}
-	//
-	//if (dev_config == GPU)
-	//{
-	//	free(CLvars.memObjectsGPU[0]);
-	//}
-	//free(CLvars.memObjectOutput);
-	free(CLvars.DeviceIDs[0]);
-
-	
+		free(CLvars.DeviceIDs[i]);
+	}	
 }
 
 ///<summary>Error checking; returns true if OK, false it failed</summary>
