@@ -258,9 +258,9 @@ void CLsetUp::createGPU()
 }
 
 ///<summary>adds a memory object buffer</summary>
-///<param name= buff>the buffer object</param>
-///<param name= df>the device type; CPU or GPU. DO NOT USE CPU_GPU</param>
-///<param name= outputBuffer>is this the output buffer?</param>
+///<param name="buff">the buffer object</param>
+///<param name="df">the device type; CPU or GPU. DO NOT USE CPU_GPU</param>
+///<param name="outputBuffer">is this the output buffer?</param>
 bool CLsetUp::AddMemObject(cl_mem buff, DEVICE_FLAG df, bool outputBuff)
 {
 	if (df == CPU)

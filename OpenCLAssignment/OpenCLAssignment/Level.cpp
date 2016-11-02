@@ -91,7 +91,33 @@ bool Level::initialize(string filename, bool parallel, CLsetUp &cl)
 
 			case CPU_GPU:
 			{
+				int cpuAmt = floor(length / 2.0f);
+				int gpuAmt = ceil(length / 2.0f);
 
+				// Set up memory objects in OpenCL
+				cl.AddMemObject(clCreateBuffer(cl.CLvars.Contexts[cl.CPUindex], 
+					CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, sizeof(char) * cpuAmt, rawContents, NULL), CPU, false);
+				cl.AddMemObject(clCreateBuffer(cl.CLvars.Contexts[cl.GPUindex],
+					CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, sizeof(char) * gpuAmt, rawContents + cpuAmt, NULL), GPU, false);
+
+				cl.AddMemObject(clCreateBuffer(cl.CLvars.Contexts[cl.CPUindex],
+					CL_MEM_READ_WRITE, sizeof(NODE_TYPE) * cpuAmt, NULL, NULL), CPU, true);
+
+				cl.AddMemObject(clCreateBuffer(cl.CLvars.Contexts[cl.GPUindex], 
+					CL_MEM_READ_WRITE, sizeof(NODE_TYPE) * gpuAmt, NULL, NULL), GPU, true);
+
+				cl.SetKernelArgs();
+
+				// Execute the level loader kernel
+				size_t cpuGlobalWorkSize[] = { cpuAmt };
+				size_t gpuGlobalWorkSize[] = { gpuAmt };
+				size_t localWorkSize[] = { 1 };
+
+				cl.QueueKernel(cpuGlobalWorkSize, localWorkSize, CPU);
+				cl.QueueKernel(gpuGlobalWorkSize, localWorkSize, GPU);
+
+				// Retrieve the output
+				cl.getOutput(sizeof(NODE_TYPE) * length, levelTiles, 0, cpuAmt);
 			}
 			break;
 		}
