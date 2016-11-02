@@ -413,7 +413,7 @@ void CLsetUp::QueueKernel(size_t globalWorkSize[], size_t localWorkSize[], DEVIC
 ///<param name= arraySize>The size in bytes to read</param>
 ///<param name= result>The size in bytes of data being read</param>
 ///<param name=offest>The offest in bytes in the buffer object to read from</param> 
-void CLsetUp::getOutput(int arraySize, void * result, size_t offsetCPU, size_t offsetGPU)
+void CLsetUp::getOutput(int arraySizeCPU, int arraySizeGPU, void * resultCPU, void* resultGPU)
 {
 	cl_int err;
 
@@ -421,7 +421,7 @@ void CLsetUp::getOutput(int arraySize, void * result, size_t offsetCPU, size_t o
 	{
 	case CPU:
 		err = clEnqueueReadBuffer(CLvars.CommandQueues[CPUindex], CLvars.memObjectOutputCPU, CL_TRUE,
-			0, arraySize, result,
+			0, arraySizeCPU, resultCPU,
 			0, NULL, NULL);
 
 		if (!CheckError(err))
@@ -431,7 +431,7 @@ void CLsetUp::getOutput(int arraySize, void * result, size_t offsetCPU, size_t o
 
 	case GPU:
 		err = clEnqueueReadBuffer(CLvars.CommandQueues[GPUindex], CLvars.memObjectOutputGPU, CL_TRUE,
-			0, arraySize, result,
+			0, arraySizeGPU, resultGPU,
 			0, NULL, NULL);
 
 		if (!CheckError(err))
@@ -441,14 +441,14 @@ void CLsetUp::getOutput(int arraySize, void * result, size_t offsetCPU, size_t o
 
 	case CPU_GPU:
 		err = clEnqueueReadBuffer(CLvars.CommandQueues[CPUindex], CLvars.memObjectOutputCPU, CL_TRUE,
-			0, arraySize, &result,
+			0, arraySizeCPU, resultCPU,
 			0, NULL, NULL);
 
 		if (!CheckError(err))
 			cerr << "failed reading data back from CPU" << endl;
 
 		err = clEnqueueReadBuffer(CLvars.CommandQueues[GPUindex], CLvars.memObjectOutputGPU, CL_TRUE,
-			0, arraySize, &result,
+			0, arraySizeGPU, resultGPU,
 			0, NULL, NULL);
 
 		if (!CheckError(err))

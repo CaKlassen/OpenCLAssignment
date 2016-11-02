@@ -65,7 +65,7 @@ bool Level::initialize(string filename, bool parallel, CLsetUp &cl)
 				cl.QueueKernel(globalWorkSize, localWorkSize, CPU);
 
 				// Retrieve the output
-				cl.getOutput(sizeof(NODE_TYPE) * length, levelTiles, 0, 0);
+				cl.getOutput(sizeof(NODE_TYPE) * length, 0, levelTiles, NULL);
 			}
 			break;
 
@@ -85,7 +85,7 @@ bool Level::initialize(string filename, bool parallel, CLsetUp &cl)
 				cl.QueueKernel(globalWorkSize, localWorkSize, GPU);
 
 				// Retrieve the output
-				cl.getOutput(sizeof(NODE_TYPE) * length, levelTiles, 0, 0);
+				cl.getOutput(0, sizeof(NODE_TYPE) * length, NULL, levelTiles);
 			}
 			break;
 
@@ -119,8 +119,8 @@ bool Level::initialize(string filename, bool parallel, CLsetUp &cl)
 				cl.QueueKernel(gpuGlobalWorkSize, localWorkSize, GPU);
 
 				// Retrieve the output
-				cl.getOutput(sizeof(NODE_TYPE) * cpuAmt, cpuResults, 0, 0);
-				cl.getOutput(sizeof(NODE_TYPE) * gpuAmt, gpuResults, 0, 0);
+				cl.getOutput(sizeof(NODE_TYPE) * cpuAmt, sizeof(NODE_TYPE) * gpuAmt, cpuResults,gpuResults);
+			/*	cl.getOutput(sizeof(NODE_TYPE) * gpuAmt, gpuResults, 0, 0);*/
 
 				for (int i = 0; i < cpuAmt; i++)
 				{

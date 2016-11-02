@@ -51,7 +51,7 @@ public:
 	bool AddMemObject(cl_mem buff, DEVICE_FLAG df, bool outputBuff);
 	bool SetKernelArgs();
 	void QueueKernel(size_t globalWorkSize[], size_t localWorkSize[], DEVICE_FLAG df);
-	void getOutput(int arraySize, void *result, size_t offsetCPU, size_t offsetGPU);
+	void getOutput(int arraySizeCPU, int arraySizeGPU, void * resultCPU, void* resultGPU);
 
 private:
 	//vars
