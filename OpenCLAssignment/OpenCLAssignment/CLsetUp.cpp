@@ -68,7 +68,7 @@ CLsetUp::~CLsetUp()
 ///<summary>sets up a single CPU for use</summary>
 void CLsetUp::createCPU()
 {
-	cl_int err;
+	cl_int err = -1;
 
 	//<<<<<<<<<<<<<<<<<<<<<<<<<<<<< SET UP PLATFORM AND DEVICE START <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 	
@@ -89,6 +89,12 @@ void CLsetUp::createCPU()
 				break;//stop searching
 			}
 		}
+
+	}
+	if (err != 0)
+	{
+		cout << "ERROR: failed to find CPU device" << endl;
+		throw exception();
 	}
 
 
@@ -171,7 +177,7 @@ void CLsetUp::createCPU()
 ///<summary>sets up a single CPU for use</summary>
 void CLsetUp::createGPU()
 {
-	cl_int err;
+	cl_int err = -1;
 
 	//<<<<<<<<<<<<<<<<<<<<<<<<<<<<< SET UP PLATFORM AND DEVICE START <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 
@@ -191,11 +197,11 @@ void CLsetUp::createGPU()
 				break;//stop searching
 			}
 		}
-		else
-		{
-			cerr << "GPU device not found" << endl;
-			throw exception();
-		}
+	}
+	if (err != 0)
+	{
+		cerr << "GPU device not found" << endl;
+		throw exception();
 	}
 	//<<<<<<<<<<<<<<<<<<<<<<<<<<<<< SET UP PLATFORM AND DEVICE END <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 
