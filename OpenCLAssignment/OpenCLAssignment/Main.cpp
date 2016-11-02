@@ -13,17 +13,28 @@ using std::clock_t;
 int main(void)
 {
 	clock_t start;
+	bool cpuFailed = false;
+	bool gpuFailed = false;
+	bool bothFailed = false;
 	double regularDuration = 0;
 	double parallelCPUDuration = 0;
 	double parallelGPUDuration = 0;
 	double parallelBothDuration = 0;
 
 	// Perform the non-parallel test
-	Level regularLevel;
-
-	CLsetUp *clA = new CLsetUp("LevelLoader.cl", "loadLevel", CPU); // Not used, just created for passing-in purposes
-
 	cout << "===== STARTING REGULAR TEST =====" << endl;
+	Level regularLevel;
+	CLsetUp *clA = nullptr;
+
+	try
+	{
+		clA = new CLsetUp("LevelLoader.cl", "loadLevel", CPU); // Not used, just created for passing-in purposes
+	}
+	catch (const exception&)
+	{
+		// Do nothing, because this is a dummy
+	}
+
 	start = clock();
 
 	if (!regularLevel.initialize("level.txt", false, *clA))
@@ -36,66 +47,116 @@ int main(void)
 
 	regularLevel.draw();
 
+
 	// Perform the parallel test (CPU)
-	Level parallelCPULevel;
-	CLsetUp *clB = new CLsetUp("LevelLoader.cl", "loadLevel", CPU);
-
 	cout << endl << "===== STARTING PARALLEL TEST (CPU) =====" << endl;
-	start = clock();
-
-	if (!parallelCPULevel.initialize("level.txt", true, *clB))
+	Level parallelCPULevel;
+	CLsetUp *clB = nullptr;
+	
+	try
 	{
-		cerr << "Failed to load the level file." << endl;
-		return 1;
+		clB = new CLsetUp("LevelLoader.cl", "loadLevel", CPU);
+	}
+	catch (const std::exception&)
+	{
+		cpuFailed = true;
 	}
 
-	parallelCPUDuration = (clock() - start) / (double)CLOCKS_PER_SEC;
+	if (!cpuFailed)
+	{
+		start = clock();
 
-	parallelCPULevel.draw();
+		if (!parallelCPULevel.initialize("level.txt", true, *clB))
+		{
+			cerr << "Failed to load the level file." << endl;
+			return 1;
+		}
+
+		parallelCPUDuration = (clock() - start) / (double)CLOCKS_PER_SEC;
+
+		parallelCPULevel.draw();
+	}
 
 	// Perform the parallel test (GPU)
-	Level parallelGPULevel;
-	CLsetUp *clC = new CLsetUp("LevelLoader.cl", "loadLevel", GPU);
-
 	cout << endl << "===== STARTING PARALLEL TEST (GPU) =====" << endl;
-	start = clock();
 
-	if (!parallelGPULevel.initialize("level.txt", true, *clC))
+	Level parallelGPULevel;
+	CLsetUp *clC = nullptr;
+	
+	try
 	{
-		cerr << "Failed to load the level file." << endl;
-		return 1;
+		clC = new CLsetUp("LevelLoader.cl", "loadLevel", GPU);
 	}
+	catch (const std::exception&)
+	{
+		gpuFailed = true;
+	}
+	
+	if (!gpuFailed)
+	{
+		start = clock();
 
-	parallelGPUDuration = (clock() - start) / (double)CLOCKS_PER_SEC;
+		if (!parallelGPULevel.initialize("level.txt", true, *clC))
+		{
+			cerr << "Failed to load the level file." << endl;
+			return 1;
+		}
 
-	parallelGPULevel.draw();
+		parallelGPUDuration = (clock() - start) / (double)CLOCKS_PER_SEC;
+
+		parallelGPULevel.draw();
+	}
 
 	// Perform the parallel test (CPU & GPU)
-	Level parallelBothLevel;
-	CLsetUp *clD = new CLsetUp("LevelLoader.cl", "loadLevel", CPU_GPU);
-
 	cout << endl << "===== STARTING PARALLEL TEST (CPU & GPU) =====" << endl;
-	start = clock();
 
-	if (!parallelBothLevel.initialize("level.txt", true, *clD))
+	Level parallelBothLevel;
+	CLsetUp *clD = nullptr;
+	
+	try
 	{
-		cerr << "Failed to load the level file." << endl;
-		return 1;
+		clD = new CLsetUp("LevelLoader.cl", "loadLevel", CPU_GPU);
+	}
+	catch (const std::exception&)
+	{
+		bothFailed = true;
 	}
 
-	parallelBothDuration = (clock() - start) / (double)CLOCKS_PER_SEC;
+	if (!bothFailed)
+	{
+		start = clock();
 
-	parallelBothLevel.draw();
+		if (!parallelBothLevel.initialize("level.txt", true, *clD))
+		{
+			cerr << "Failed to load the level file." << endl;
+			return 1;
+		}
 
+		parallelBothDuration = (clock() - start) / (double)CLOCKS_PER_SEC;
+
+		parallelBothLevel.draw();
+	}
 
 	// Print the benchmark times
 	cout << endl << endl;
 	cout << "===== BENCHMARKING RESULTS =====" << endl;
-	cout << "Regular time: " << regularDuration << " seconds" << endl;
-	cout << "Parallel (CPU) time: " << parallelCPUDuration << " seconds" << endl;
-	cout << "Parallel (GPU) time: " << parallelGPUDuration << " seconds" << endl;
-	cout << "Parallel (CPU & GPU) time: " << parallelBothDuration << " seconds" << endl;
 
+	cout << "Regular time: " << regularDuration << " seconds" << endl;
+
+	if (cpuFailed)
+		cout << "Parallel (CPU) time: FAILED" << endl;
+	else
+		cout << "Parallel (CPU) time: " << parallelCPUDuration << " seconds" << endl;
+	
+	if (gpuFailed)
+		cout << "Parallel (GPU) time: FAILED" << endl;
+	else
+		cout << "Parallel (GPU) time: " << parallelGPUDuration << " seconds" << endl;
+
+	if (bothFailed)
+		cout << "Parallel (CPU & GPU) time: FAILED" << endl;
+	else
+		cout << "Parallel (CPU & GPU) time: " << parallelBothDuration << " seconds" << endl;
 
 	// Wait for input
 	getchar();

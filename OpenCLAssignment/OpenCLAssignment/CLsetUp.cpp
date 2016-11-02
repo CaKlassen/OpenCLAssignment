@@ -16,6 +16,7 @@ CLsetUp::CLsetUp(char* kernelfileName, char* kernelName, DEVICE_FLAG df)
 	if (!CheckError(err))
 	{
 		cout << "ERROR: failed to find platform IDs" << endl;
+		throw exception();
 	}
 
 	if (CLvars.PlatformIDs[2] == NULL)
@@ -89,6 +90,8 @@ void CLsetUp::createCPU()
 			}
 		}
 	}
+
+
 	//<<<<<<<<<<<<<<<<<<<<<<<<<<<<< SET UP PLATFORM AND DEVICE END <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 
 
@@ -98,7 +101,10 @@ void CLsetUp::createCPU()
 	if (CheckError(err))
 		CLvars.CommandQueues.push_back(tempCQ);//CQ created successfully; add it to CQ list
 	else
+	{
 		cout << "failed to create command queue for CPU" << endl;
+		throw exception();
+	}
 	//<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<< CREATE COMMAND QUEUE END <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 
 
@@ -185,6 +191,11 @@ void CLsetUp::createGPU()
 				break;//stop searching
 			}
 		}
+		else
+		{
+			cerr << "GPU device not found" << endl;
+			throw exception();
+		}
 	}
 	//<<<<<<<<<<<<<<<<<<<<<<<<<<<<< SET UP PLATFORM AND DEVICE END <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 
@@ -195,7 +206,10 @@ void CLsetUp::createGPU()
 	if (CheckError(err))
 		CLvars.CommandQueues.push_back(tempCQ);//CQ created successfully; add it to CQ list
 	else
+	{
 		cout << "failed to create command queue for GPU" << endl;
+		throw exception();
+	}
 	//<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<< CREATE COMMAND QUEUE END <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 
 

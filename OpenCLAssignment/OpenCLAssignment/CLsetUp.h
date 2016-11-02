@@ -4,6 +4,7 @@
 #include <fstream>
 #include <sstream>
 #include <vector>
+#include <exception>
 
 #ifdef __APPLE__
 #include <sys/time.h>
@@ -16,6 +17,7 @@
 
 #include <vector>
 #include <deque>
+
 using namespace std;
 
 enum DEVICE_FLAG { CPU, GPU, CPU_GPU };//influences object setup
