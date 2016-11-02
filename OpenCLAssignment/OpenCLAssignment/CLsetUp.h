@@ -31,7 +31,8 @@ struct CL
 	vector<cl_kernel> Kernels;//list of kernels
 	vector<cl_mem> memObjectsCPU;//memory buffer objects for CPU
 	vector<cl_mem> memObjectsGPU;//memory buffer objects for GPU
-	cl_mem memObjectOutput;//single output object
+	cl_mem memObjectOutputCPU;
+	cl_mem memObjectOutputGPU;
 };
 
 class CLsetUp

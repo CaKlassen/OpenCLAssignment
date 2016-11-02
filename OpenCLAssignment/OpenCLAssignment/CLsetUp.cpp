@@ -266,7 +266,7 @@ bool CLsetUp::AddMemObject(cl_mem buff, DEVICE_FLAG df, bool outputBuff)
 	if (df == CPU)
 	{
 		if (outputBuff)
-			CLvars.memObjectOutput = buff;
+			CLvars.memObjectOutputCPU = buff;
 		else
 			CLvars.memObjectsCPU.push_back(buff);
 	
@@ -274,7 +274,7 @@ bool CLsetUp::AddMemObject(cl_mem buff, DEVICE_FLAG df, bool outputBuff)
 	else if (df == GPU)
 	{
 		if (outputBuff)
-			CLvars.memObjectOutput = buff;
+			CLvars.memObjectOutputGPU = buff;
 		else
 			CLvars.memObjectsGPU.push_back(buff);
 	}
@@ -301,7 +301,7 @@ bool CLsetUp::SetKernelArgs()
 			}
 		}
 
-		err = clSetKernelArg(CLvars.Kernels[CPUindex], CLvars.memObjectsCPU.size(), sizeof(cl_mem), &CLvars.memObjectOutput);
+		err = clSetKernelArg(CLvars.Kernels[CPUindex], CLvars.memObjectsCPU.size(), sizeof(cl_mem), &CLvars.memObjectOutputCPU);
 		if (!CheckError(err))
 		{
 			std::cerr << "Failed to set kernel arguments for CPU; output buffer" << std::endl;
@@ -320,7 +320,7 @@ bool CLsetUp::SetKernelArgs()
 			}
 		}
 
-		err = clSetKernelArg(CLvars.Kernels[GPUindex], CLvars.memObjectsGPU.size(), sizeof(cl_mem), &CLvars.memObjectOutput);
+		err = clSetKernelArg(CLvars.Kernels[GPUindex], CLvars.memObjectsGPU.size(), sizeof(cl_mem), &CLvars.memObjectOutputGPU);
 		if (!CheckError(err))
 		{
 			std::cerr << "Failed to set kernel arguments for GPU; output buffer" << std::endl;
@@ -340,7 +340,7 @@ bool CLsetUp::SetKernelArgs()
 			}
 		}
 
-		err = clSetKernelArg(CLvars.Kernels[CPUindex], CLvars.memObjectsCPU.size(), sizeof(cl_mem), &CLvars.memObjectOutput);
+		err = clSetKernelArg(CLvars.Kernels[CPUindex], CLvars.memObjectsCPU.size(), sizeof(cl_mem), &CLvars.memObjectOutputCPU);
 		if (!CheckError(err))
 		{
 			std::cerr << "Failed to set kernel arguments for CPU; output buffer" << std::endl;
@@ -360,7 +360,7 @@ bool CLsetUp::SetKernelArgs()
 			}
 		}
 
-		err = clSetKernelArg(CLvars.Kernels[GPUindex], CLvars.memObjectsGPU.size(), sizeof(cl_mem), &CLvars.memObjectOutput);
+		err = clSetKernelArg(CLvars.Kernels[GPUindex], CLvars.memObjectsGPU.size(), sizeof(cl_mem), &CLvars.memObjectOutputGPU);
 		if (!CheckError(err))
 		{
 			std::cerr << "Failed to set kernel arguments for GPU; output buffer" << std::endl;
@@ -420,7 +420,7 @@ void CLsetUp::getOutput(int arraySize, void * result, size_t offsetCPU, size_t o
 	switch (dev_config)
 	{
 	case CPU:
-		err = clEnqueueReadBuffer(CLvars.CommandQueues[CPUindex], CLvars.memObjectOutput, CL_TRUE,
+		err = clEnqueueReadBuffer(CLvars.CommandQueues[CPUindex], CLvars.memObjectOutputCPU, CL_TRUE,
 			0, arraySize, result,
 			0, NULL, NULL);
 
@@ -430,7 +430,7 @@ void CLsetUp::getOutput(int arraySize, void * result, size_t offsetCPU, size_t o
 		break;
 
 	case GPU:
-		err = clEnqueueReadBuffer(CLvars.CommandQueues[GPUindex], CLvars.memObjectOutput, CL_TRUE,
+		err = clEnqueueReadBuffer(CLvars.CommandQueues[GPUindex], CLvars.memObjectOutputGPU, CL_TRUE,
 			0, arraySize, result,
 			0, NULL, NULL);
 
@@ -440,15 +440,15 @@ void CLsetUp::getOutput(int arraySize, void * result, size_t offsetCPU, size_t o
 		break;
 
 	case CPU_GPU:
-		err = clEnqueueReadBuffer(CLvars.CommandQueues[CPUindex], CLvars.memObjectOutput, CL_FALSE,
-			0, arraySize, &result + offsetCPU,
+		err = clEnqueueReadBuffer(CLvars.CommandQueues[CPUindex], CLvars.memObjectOutputCPU, CL_TRUE,
+			0, arraySize, &result,
 			0, NULL, NULL);
 
 		if (!CheckError(err))
 			cerr << "failed reading data back from CPU" << endl;
 
-		err = clEnqueueReadBuffer(CLvars.CommandQueues[GPUindex], CLvars.memObjectOutput, CL_FALSE,
-			0, arraySize, &result + offsetGPU,
+		err = clEnqueueReadBuffer(CLvars.CommandQueues[GPUindex], CLvars.memObjectOutputGPU, CL_TRUE,
+			0, arraySize, &result,
 			0, NULL, NULL);
 
 		if (!CheckError(err))
@@ -480,8 +480,10 @@ void CLsetUp::cleanUp()
 		free(CLvars.memObjectsGPU[i]);
 	}
 
-	clReleaseMemObject(CLvars.memObjectOutput);
-	free(CLvars.memObjectOutput);
+	clReleaseMemObject(CLvars.memObjectOutputCPU);
+	free(CLvars.memObjectOutputCPU);
+	clReleaseMemObject(CLvars.memObjectOutputGPU);//NEW
+	free(CLvars.memObjectOutputGPU);//NEW
 
 	//release all kernels
 	for (int i = 0; i < CLvars.Kernels.size(); ++i)
