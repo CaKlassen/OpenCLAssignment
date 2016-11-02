@@ -62,7 +62,7 @@ CLsetUp::CLsetUp(char* kernelfileName, char* kernelName, DEVICE_FLAG df)
 
 CLsetUp::~CLsetUp()
 {
-	//cleanUp();
+	cleanUp();
 }
 
 ///<summary>sets up a single CPU for use</summary>
@@ -493,19 +493,16 @@ void CLsetUp::cleanUp()
 	for (int i = 0; i < CLvars.memObjectsCPU.size(); ++i)
 	{
 		clReleaseMemObject(CLvars.memObjectsCPU[i]);
-		free(CLvars.memObjectsCPU[i]);
 	}
 
 	for (int i = 0; i < CLvars.memObjectsGPU.size(); ++i)
 	{
 		clReleaseMemObject(CLvars.memObjectsGPU[i]);
-		free(CLvars.memObjectsGPU[i]);
 	}
 
 	clReleaseMemObject(CLvars.memObjectOutputCPU);
-	free(CLvars.memObjectOutputCPU);
 	clReleaseMemObject(CLvars.memObjectOutputGPU);//NEW
-	free(CLvars.memObjectOutputGPU);//NEW
+
 
 	//release all kernels
 	for (int i = 0; i < CLvars.Kernels.size(); ++i)
@@ -529,7 +526,6 @@ void CLsetUp::cleanUp()
 	for (int i = 0; i < CLvars.DeviceIDs.size(); ++i)
 	{
 		clReleaseDevice(CLvars.DeviceIDs[i]);
-		free(CLvars.DeviceIDs[i]);
 	}	
 }
 
