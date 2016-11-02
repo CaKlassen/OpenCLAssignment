@@ -21,7 +21,7 @@ int main(void)
 	// Perform the non-parallel test
 	Level regularLevel;
 
-	CLsetUp *clA = new CLsetUp("LevelLoader.cl", "loadLevel", CPU);
+	CLsetUp *clA = new CLsetUp("LevelLoader.cl", "loadLevel", CPU); // Not used, just created for passing-in purposes
 
 	cout << "===== STARTING REGULAR TEST =====" << endl;
 	start = clock();
@@ -33,7 +33,9 @@ int main(void)
 	}
 
 	regularDuration = (clock() - start) / (double)CLOCKS_PER_SEC;
-	
+
+	regularLevel.draw();
+
 	// Perform the parallel test (CPU)
 	Level parallelCPULevel;
 	CLsetUp *clB = new CLsetUp("LevelLoader.cl", "loadLevel", CPU);
@@ -49,6 +51,8 @@ int main(void)
 
 	parallelCPUDuration = (clock() - start) / (double)CLOCKS_PER_SEC;
 
+	parallelCPULevel.draw();
+
 	// Perform the parallel test (GPU)
 	Level parallelGPULevel;
 	CLsetUp *clC = new CLsetUp("LevelLoader.cl", "loadLevel", GPU);
@@ -63,6 +67,8 @@ int main(void)
 	}
 
 	parallelGPUDuration = (clock() - start) / (double)CLOCKS_PER_SEC;
+
+	parallelGPULevel.draw();
 
 	// Perform the parallel test (CPU & GPU)
 	Level parallelBothLevel;

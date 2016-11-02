@@ -29,6 +29,7 @@ CLsetUp::CLsetUp(char* kernelfileName, char* kernelName, DEVICE_FLAG df)
 	}
 
 	//DEBUG
+	/*
 	char pname[1024];
 	size_t retsize;
 	for (int i = 0; i < CLvars.PlatformIDs.size(); ++i)
@@ -36,7 +37,8 @@ CLsetUp::CLsetUp(char* kernelfileName, char* kernelName, DEVICE_FLAG df)
 		clGetPlatformInfo(CLvars.PlatformIDs[i], CL_PLATFORM_NAME, sizeof(pname), (void*)pname, &retsize);
 		cout << pname << endl;
 	}
-	//DUBUG
+	*/
+	//DEBUG
 	
 
 	//CHOOSE SET UP BASED ON DEVICE_FLAG

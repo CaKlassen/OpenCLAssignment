@@ -119,8 +119,7 @@ bool Level::initialize(string filename, bool parallel, CLsetUp &cl)
 				cl.QueueKernel(gpuGlobalWorkSize, localWorkSize, GPU);
 
 				// Retrieve the output
-				cl.getOutput(sizeof(NODE_TYPE) * cpuAmt, sizeof(NODE_TYPE) * gpuAmt, cpuResults,gpuResults);
-			/*	cl.getOutput(sizeof(NODE_TYPE) * gpuAmt, gpuResults, 0, 0);*/
+				cl.getOutput(sizeof(NODE_TYPE) * cpuAmt, sizeof(NODE_TYPE) * gpuAmt, cpuResults, gpuResults);
 
 				for (int i = 0; i < cpuAmt; i++)
 				{
@@ -129,7 +128,7 @@ bool Level::initialize(string filename, bool parallel, CLsetUp &cl)
 
 				for (int i = 0; i < gpuAmt; i++)
 				{
-					levelTiles[cpuAmt + i] = cpuResults[i];
+					levelTiles[cpuAmt + i] = gpuResults[i];
 				}
 			}
 			break;
