@@ -93,8 +93,6 @@ bool Level::initialize(string filename, bool parallel, CLsetUp &cl)
 			{
 				int cpuAmt = floor(length / 2.0f);
 				int gpuAmt = ceil(length / 2.0f);
-				NODE_TYPE* cpuResults = new NODE_TYPE[cpuAmt];
-				NODE_TYPE* gpuResults = new NODE_TYPE[gpuAmt];
 
 				// Set up memory objects in OpenCL
 				cl.AddMemObject(clCreateBuffer(cl.CLvars.Contexts[cl.CPUindex], 
@@ -119,17 +117,7 @@ bool Level::initialize(string filename, bool parallel, CLsetUp &cl)
 				cl.QueueKernel(gpuGlobalWorkSize, localWorkSize, GPU);
 
 				// Retrieve the output
-				cl.getOutput(sizeof(NODE_TYPE) * cpuAmt, sizeof(NODE_TYPE) * gpuAmt, cpuResults, gpuResults);
-
-				for (int i = 0; i < cpuAmt; i++)
-				{
-					levelTiles[i] = cpuResults[i];
-				}
-
-				for (int i = 0; i < gpuAmt; i++)
-				{
-					levelTiles[cpuAmt + i] = gpuResults[i];
-				}
+				cl.getOutput(sizeof(NODE_TYPE) * cpuAmt, sizeof(NODE_TYPE) * gpuAmt, levelTiles, levelTiles + cpuAmt);
 			}
 			break;
 		}
